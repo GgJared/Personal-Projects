@@ -29,13 +29,13 @@ class Tile:
         self.borderNeighborNum = 0
         self.neighborNum = 4096
         #"""
-        if x == 0: 
-            self.borderNeighborNum += (1+2+128)
-        elif x == width/sz-1:
-            self.borderNeighborNum += (8+16+32)
         if y == 0: 
+            self.borderNeighborNum += (1+2+128)
+        elif y == width/sz-1:
+            self.borderNeighborNum += (8+16+32)
+        if x == 0: 
             self.borderNeighborNum += ~self.borderNeighborNum & (32+64+128)
-        elif y == height/sz-1:
+        elif x == height/sz-1:
             self.borderNeighborNum += ~self.borderNeighborNum & (2+4+8)
         print(x,y,self.borderNeighborNum)
         #"""
@@ -56,6 +56,8 @@ def genGrid():
     for x in range(height/sz):
         tmpGrid = []
         for y in range(width/sz):
+            #if x == width/sz/2 and abs(y-height/sz/2) == 0:
+            #    tmpGrid.append(Tile(x,y,0))
             if x == width/sz/2 and abs(y-height/sz/2)+5 <= 10:
                 tmpGrid.append(Tile(x,y,0))
             else:
@@ -97,36 +99,68 @@ def neighborIntCheck(x,y):#might be less efficient than just having specific rul
 def RTGRAnalysisTile(x,y):#
     #print(x,y, "RTGR-AT")
     neighborNum = neighborIntCheck(x,y)
-    for i in range(maxDirs//2): #cardinal
-        if ((grid[x][y].rtgrStat>>(i*2))&1):
-            #print(i, "CD")
-            tmpNumDir = 1<<(2*i)
-            if (neighborNum & tmpNumDir): #front
-                currTile = grid[x+dirs8List[i*2][0]][y+dirs8List[i*2][1]]
-                if (not currTile.rtgrStat & tmpNumDir):
-                    #print(i,"ADD-RTGR F")
-                    currTile.rtgrStat += tmpNumDir
-                    set2.add((currTile.x,currTile.y))
-                    #...
-            if (not neighborNum & 1<<((2*i+3)%maxDirs)):#sides
-                currTileOffset = (2*i+2)%maxDirs
-                currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
-                if (neighborNum & 1<<currTileOffset):
+    for i in range(maxDirs):
+        if (i%2 == 0):#cardinal
+            if ((grid[x][y].rtgrStat>>(i))&1): 
+                #print(i, "CD")
+                tmpNumDir = 1<<(i)
+                if (neighborNum & tmpNumDir): #front
+                    currTile = grid[x+dirs8List[i][0]][y+dirs8List[i][1]]
+                    if (not currTile.rtgrStat & tmpNumDir):
+                        #print(i,"ADD-RTGR F")
+                        currTile.rtgrStat += tmpNumDir
+                        set2.add((currTile.x,currTile.y))
+                        #...
+                if (not neighborNum & 1<<((i+3)%maxDirs)):#sides
+                    currTileOffset = (i+2)%maxDirs
+                    currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
+                    if (neighborNum & 1<<currTileOffset):
+                        if (not currTile.rtgrStat & tmpNumDir):
+                            #print(i,"ADD-RTGR S")
+                            currTile.rtgrStat += tmpNumDir
+                            set2.add((currTile.x,currTile.y))
+                            #...
+                if (not neighborNum & 1<<((i-3)%maxDirs)):#sides
+                    currTileOffset = (i-2)%maxDirs
+                    currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
+                    if (neighborNum & 1<<currTileOffset):
+                        if (not currTile.rtgrStat & tmpNumDir):
+                            #print(i,"ADD-RTGR S")
+                            currTile.rtgrStat += xtmpNumDir
+                            set2.add((currTile.x,currTile.y))
+                            #...
+        else: ###wrong way right now... ooops
+            if ((grid[x][y].rtgrStat>>(i))&1): 
+                tmpNumDir = 1<<(i)
+                #which diagonal
+                print(tmpNumDir,(neighborNum & tmpNumDir) , ((neighborNum & tmpNumDir*2)) , (not(neighborNum & tmpNumDir/2)))
+                if ((neighborNum & tmpNumDir) and (neighborNum & tmpNumDir*2) and (neighborNum & tmpNumDir/2)):#corner
+                    currTileOffset = (i)%maxDirs
+                    currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
                     if (not currTile.rtgrStat & tmpNumDir):
                         #print(i,"ADD-RTGR S")
                         currTile.rtgrStat += tmpNumDir
                         set2.add((currTile.x,currTile.y))
-                        #...
-            if (not neighborNum & 1<<((2*i-3)%maxDirs)):#sides
-                currTileOffset = (2*i-2)%maxDirs
-                currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
-                if (neighborNum & 1<<currTileOffset):
-                    if (not currTile.rtgrStat & tmpNumDir):
-                        #print(i,"ADD-RTGR S")
-                        currTile.rtgrStat += tmpNumDir
-                        set2.add((currTile.x,currTile.y))
-                        #...
-    #for j in range(maxDirs//2): #diagonal
+                elif(True):
+                    if (neighborNum & 1<<((i-1)%maxDirs)):# and not neighborNum & 1<<((i-2)%maxDirs)):#sides
+                        currTileOffset = (i-1)%maxDirs
+                        currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
+                        if (not currTile.rtgrStat & tmpNumDir):
+                            #print(i,"ADD-RTGR S")
+                            currTile.rtgrStat += tmpNumDir
+                            set2.add((currTile.x,currTile.y))
+                            #...
+                    if (neighborNum & 1<<((i+1)%maxDirs)):# and not neighborNum & 1<<((i+2)%maxDirs)):#sides
+                        currTileOffset = (i+1)%maxDirs
+                        currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
+                        if (not currTile.rtgrStat & tmpNumDir):
+                            #print(i,"ADD-RTGR S")
+                            currTile.rtgrStat += tmpNumDir
+                            set2.add((currTile.x,currTile.y))
+                            #...
+                    
+                
+
     
     #3 ifs in cardinal directions
     #2 ifs in diaginal directions
@@ -155,7 +189,7 @@ def setup():
     genGrid()
     for t in endNodes:
         set2.add((t[0],t[1]))
-    frameRate(1)
+    frameRate(2)
 
 
 def draw():
