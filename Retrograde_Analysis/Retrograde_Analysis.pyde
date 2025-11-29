@@ -77,24 +77,29 @@ def arrows(x,y,inSZ,arrowSZ,dirs,ALP): #inefficient, decode is better
             stroke(i*(255//maxDirs),255,255,ALP)
             circle(inSZ/2+x*inSZ+arrowSZ*dirs8List[i][0],inSZ/2+y*inSZ+arrowSZ*dirs8List[i][1],4)
 
-def neighborIntCheck(x,y):#might be less efficient than just having specific rules for each direction
+def neighborIntCheck(x,y):#might be less efficient than just having specific rules for each direction #outputs 255 if all neighbors are empty
     neighborNum = 0
-    if (grid[x][y].neighborNum & 4096):
+    if (grid[x][y].neighborNum == 4096): #if the current grid value already has one
         for i in range(maxDirs):
             #print(i,neighborNum,tmpTile.type)
-            if (grid[x][y].borderNeighborNum):
+            if (grid[x][y].borderNeighborNum): #if it is on the border
                 if (not((1<<i) & grid[x][y].borderNeighborNum)):
                     print(i,x,y,x+dirs8List[i][0],y+dirs8List[i][1],grid[x][y].borderNeighborNum,(1<<i))
                     tmpTile = grid[x+dirs8List[i][0]][y+dirs8List[i][1]]
-                    if (tmpTile.type == 1):
+                    if (tmpTile.type != 2):
                         neighborNum += (1<<i)
             else:
                 tmpTile = grid[x+dirs8List[i][0]][y+dirs8List[i][1]]
-                if (tmpTile.type == 1):
+                if (tmpTile.type != 2): #if it is empty
                     neighborNum += (1<<i)
         grid[x][y].neighborNum = neighborNum
         return neighborNum
     return grid[x][y].neighborNum
+
+def tileRotate(current,rotation): #takes in one of the 8 cardinal directions from 0 to 7 the rotated one from 0 to 7
+    return (current+rotation)%maxDirs
+def tileRotateInt(current,rotation): #takes in one of the 8 cardinal directions from 0 to 7 and outputs the rotated one from 0 to 255
+    return 1<<((current+rotation)%maxDirs)
 
 def RTGRAnalysisTile(x,y):#
     #print(x,y, "RTGR-AT")
@@ -111,8 +116,8 @@ def RTGRAnalysisTile(x,y):#
                         currTile.rtgrStat += tmpNumDir
                         set2.add((currTile.x,currTile.y))
                         #...
-                if (not neighborNum & 1<<((i+3)%maxDirs)):#sides
-                    currTileOffset = (i+2)%maxDirs
+                if (not neighborNum & tileRotateInt(i,3)):#sides
+                    currTileOffset = tileRotate(i,2)
                     currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
                     if (neighborNum & 1<<currTileOffset):
                         if (not currTile.rtgrStat & tmpNumDir):
@@ -120,46 +125,45 @@ def RTGRAnalysisTile(x,y):#
                             currTile.rtgrStat += tmpNumDir
                             set2.add((currTile.x,currTile.y))
                             #...
-                if (not neighborNum & 1<<((i-3)%maxDirs)):#sides
-                    currTileOffset = (i-2)%maxDirs
+                if (not neighborNum & tileRotateInt(i,-3)):#sides
+                    currTileOffset = tileRotate(i,-2)
                     currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
                     if (neighborNum & 1<<currTileOffset):
                         if (not currTile.rtgrStat & tmpNumDir):
                             #print(i,"ADD-RTGR S")
-                            currTile.rtgrStat += xtmpNumDir
+                            currTile.rtgrStat += tmpNumDir
                             set2.add((currTile.x,currTile.y))
                             #...
-        else: ###wrong way right now... ooops
+                            
+        else:
             if ((grid[x][y].rtgrStat>>(i))&1): 
                 tmpNumDir = 1<<(i)
                 #which diagonal
                 print(tmpNumDir,(neighborNum & tmpNumDir) , ((neighborNum & tmpNumDir*2)) , (not(neighborNum & tmpNumDir/2)))
-                if ((neighborNum & tmpNumDir) and (neighborNum & tmpNumDir*2) and (neighborNum & tmpNumDir/2)):#corner
+                if ((neighborNum & tmpNumDir) and (neighborNum & tileRotateInt(i,1)) and (neighborNum & tileRotateInt(i,-1))):#corner
                     currTileOffset = (i)%maxDirs
                     currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
                     if (not currTile.rtgrStat & tmpNumDir):
                         #print(i,"ADD-RTGR S")
                         currTile.rtgrStat += tmpNumDir
                         set2.add((currTile.x,currTile.y))
-                elif(True):
-                    if (neighborNum & 1<<((i-1)%maxDirs)):# and not neighborNum & 1<<((i-2)%maxDirs)):#sides
-                        currTileOffset = (i-1)%maxDirs
-                        currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
-                        if (not currTile.rtgrStat & tmpNumDir):
-                            #print(i,"ADD-RTGR S")
-                            currTile.rtgrStat += tmpNumDir
-                            set2.add((currTile.x,currTile.y))
-                            #...
-                    if (neighborNum & 1<<((i+1)%maxDirs)):# and not neighborNum & 1<<((i+2)%maxDirs)):#sides
-                        currTileOffset = (i+1)%maxDirs
-                        currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
-                        if (not currTile.rtgrStat & tmpNumDir):
-                            #print(i,"ADD-RTGR S")
-                            currTile.rtgrStat += tmpNumDir
-                            set2.add((currTile.x,currTile.y))
-                            #...
-                    
-                
+                if ((neighborNum & tileRotateInt(i,1)) and (not neighborNum & tileRotateInt(i,2) or not neighborNum & tileRotateInt(i,3))):#side clockwise
+                    currTileOffset = tileRotate(i,1)
+                    currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
+                    if (not currTile.rtgrStat & tmpNumDir):
+                        #print(i,"ADD-RTGR S")
+                        currTile.rtgrStat += tmpNumDir
+                        set2.add((currTile.x,currTile.y))
+                        #...
+                if ((neighborNum & tileRotateInt(i,-1)) and (not neighborNum & tileRotateInt(i,-2) or not neighborNum & tileRotateInt(i,-3))):#side counterclockwise
+                    currTileOffset = tileRotate(i,-1)
+                    currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
+                    if (not currTile.rtgrStat & tmpNumDir):
+                        #print(i,"ADD-RTGR S")
+                        currTile.rtgrStat += tmpNumDir
+                        set2.add((currTile.x,currTile.y))
+                        #...
+            
 
     
     #3 ifs in cardinal directions
