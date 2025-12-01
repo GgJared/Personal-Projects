@@ -5,7 +5,7 @@ import heapq
 """
 touch the end tile or be directly on the tile? Probably Touch end tiles
 """
-sz = 20
+sz = 40
 maxDirs = 8 
 colTypes = (color(50,200,50),color(200,200,200),color(10,10,10)) #RGB
 dirs8List = [
@@ -18,6 +18,11 @@ grid = []
 endNodes = []
 set1 = set()
 set2 = set()
+set1Remove = set()
+set2Remove = set()
+paused = False
+setting = 1
+t = 0
 
 class Tile:
     def __init__(self,x,y,type):
@@ -40,7 +45,7 @@ class Tile:
         print(x,y,self.borderNeighborNum)
         #"""
         if type == 0:
-            self.rtgrStat = 255
+            self.rtgrStat = 1+4+16+64
             endNodes.append((x,y))
     
     def update(self):
@@ -61,7 +66,8 @@ def genGrid():
             if x == width/sz/2 and abs(y-height/sz/2)+5 <= 10:
                 tmpGrid.append(Tile(x,y,0))
             else:
-                tmpGrid.append(Tile(x,y,randint(0,4)//4+1))
+                tmpGrid.append(Tile(x,y,randint(0,4)//4 + 1))
+                #tmpGrid.append(Tile(x,y,1))
         grid.append(tmpGrid)
 
 def arrows(x,y,inSZ,arrowSZ,dirs,ALP): #inefficient, decode is better
@@ -84,7 +90,7 @@ def neighborIntCheck(x,y):#might be less efficient than just having specific rul
             #print(i,neighborNum,tmpTile.type)
             if (grid[x][y].borderNeighborNum): #if it is on the border
                 if (not((1<<i) & grid[x][y].borderNeighborNum)):
-                    print(i,x,y,x+dirs8List[i][0],y+dirs8List[i][1],grid[x][y].borderNeighborNum,(1<<i))
+                    #2print(i,x,y,x+dirs8List[i][0],y+dirs8List[i][1],grid[x][y].borderNeighborNum,(1<<i))
                     tmpTile = grid[x+dirs8List[i][0]][y+dirs8List[i][1]]
                     if (tmpTile.type != 2):
                         neighborNum += (1<<i)
@@ -139,7 +145,7 @@ def RTGRAnalysisTile(x,y):#
             if ((grid[x][y].rtgrStat>>(i))&1): 
                 tmpNumDir = 1<<(i)
                 #which diagonal
-                print(tmpNumDir,(neighborNum & tmpNumDir) , ((neighborNum & tmpNumDir*2)) , (not(neighborNum & tmpNumDir/2)))
+                #print(tmpNumDir,(neighborNum & tmpNumDir) , ((neighborNum & tmpNumDir*2)) , (not(neighborNum & tmpNumDir/2)))
                 if ((neighborNum & tmpNumDir) and (neighborNum & tileRotateInt(i,1)) and (neighborNum & tileRotateInt(i,-1))):#corner
                     currTileOffset = (i)%maxDirs
                     currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
@@ -163,13 +169,98 @@ def RTGRAnalysisTile(x,y):#
                         currTile.rtgrStat += tmpNumDir
                         set2.add((currTile.x,currTile.y))
                         #...
-            
 
     
-    #3 ifs in cardinal directions
-    #2 ifs in diaginal directions
+def rowConnectedRemove(dir,x,y):
+    leftNumDir = tileRotate(dir,-2)
+    rightNumDir = tileRotate(dir,2)
+    backNumDir = tileRotate(dir,4)
+    left = [x,y]
+    neighborNumLeft = neighborIntCheck(x,y)
+    right = [x,y]
+    neighborNumRight = neighborIntCheck(x,y)
+    leftDone = False
+    rightDone = False
+    altConnection = False
+    while (not altConnection and (not leftDone or not rightDone)):
+        if (grid[right[0]][right[1]].type == 0):
+            altConnection = True
+            break
+        if (grid[left[0]][left[1]].type == 0):
+            altConnection = True
+            break
+        if (neighborNumRight&(1<<rightNumDir)):
+            if (grid[right[0]+dirs8List[rightNumDir][0]][right[1]+dirs8List[rightNumDir][1]].rtgrStat&(1<<dir)):
+                right[0] += dirs8List[rightNumDir][0]
+                right[1] += dirs8List[rightNumDir][1]
+                neighborNumRight = neighborIntCheck(right[0],right[1])
+                if (neighborNumRight&(1<<backNumDir)):
+                    if (grid[right[0]+dirs8List[backNumDir][0]][right[1]+dirs8List[backNumDir][1]].rtgrStat&(1<<dir)):
+                        altConnection = True
+                        break
+            else:
+                rightDone = True
+        else:
+            rightDone = True
+        if (neighborNumLeft&(1<<leftNumDir)):
+            if (grid[left[0]+dirs8List[leftNumDir][0]][left[1]+dirs8List[leftNumDir][1]].rtgrStat&(1<<dir)):
+                left[0] += dirs8List[leftNumDir][0]
+                left[1] += dirs8List[leftNumDir][1]
+                neighborNumLeft = neighborIntCheck(left[0],left[1])
+                if (neighborNumLeft&(1<<backNumDir)):
+                    if (grid[left[0]+dirs8List[backNumDir][0]][left[1]+dirs8List[backNumDir][1]].rtgrStat&(1<<dir)):
+                        altConnection = True
+                        break
+            else:
+                leftDone = True
+        else:
+            leftDone = True
+    
+    if (grid[right[0]][right[1]].type == 0):
+        altConnection = True
+    if (grid[left[0]][left[1]].type == 0):
+        altConnection = True
+    
+    if (altConnection == False):
+        print("Alt Connections False",left,right)
+        for xT in range(left[0],right[0]+1):
+            for yT in range(left[1],right[1]+1):
+                print("Test", dir,xT,yT,1<<dir)
+                if (grid[xT][yT].rtgrStat&(1<<dir)):
+                    print("Remove", dir,xT,yT,1<<dir)
+                    grid[xT][yT].rtgrStat -= 1<<dir
+                    if (neighborIntCheck(xT,yT)&(1<<dir)):
+                        if(grid[xT+dirs8List[dir][0]][yT+dirs8List[dir][1]].rtgrStat&(1<<dir)):
+                            set2Remove.add((xT+dirs8List[dir][0],yT+dirs8List[dir][1]))
+    else:
+        print("Alt Connections True",left,right)
             
         
+def RTGRAnalysisTileRemove(x,y):#
+    neighborNum = neighborIntCheck(x,y)
+    for i in range(maxDirs):
+        if (i%2 == 0):#cardinal
+            if ((grid[x][y].rtgrStat>>(i))&1): 
+                if (neighborNum&tileRotateInt(i,4)):
+                    if (grid[x+dirs8List[tileRotate(i,4)][0]][y+dirs8List[tileRotate(i,4)][1]].type == 1):
+                        if (not grid[x+dirs8List[tileRotate(i,4)][0]][y+dirs8List[tileRotate(i,4)][1]].rtgrStat&(1<<i)):
+                            print("Remove Only Me", i,x,y,1<<i)
+                            grid[x][y].rtgrStat -= 1<<i
+                            if (neighborNum&tileRotateInt(i,-2)):
+                                if(grid[x+dirs8List[tileRotate(i,-2)][0]][y+dirs8List[tileRotate(i,-2)][1]].rtgrStat&(1<<i)):
+                                    set2Remove.add((x+dirs8List[tileRotate(i,-2)][0],y+dirs8List[tileRotate(i,-2)][1]))
+                            if (neighborNum&tileRotateInt(i,2)):
+                                if(grid[x+dirs8List[tileRotate(i,2)][0]][y+dirs8List[tileRotate(i,2)][1]].rtgrStat&(1<<i)):
+                                    set2Remove.add((x+dirs8List[tileRotate(i,2)][0],y+dirs8List[tileRotate(i,2)][1]))
+                            if (neighborNum&(1<<i)):
+                                if(grid[x+dirs8List[i][0]][y+dirs8List[i][1]].rtgrStat&(1<<i)):
+                                    set2Remove.add((x+dirs8List[i][0],y+dirs8List[i][1]))
+                    else:
+                        rowConnectedRemove(i,x,y)
+                else:
+                    rowConnectedRemove(i,x,y)
+            
+"""
 def RTGRAnalysis(): #kind of like BFS with more complex rules
     queueTiles = deque()
     for t in endNodes:
@@ -177,26 +268,34 @@ def RTGRAnalysis(): #kind of like BFS with more complex rules
     while(not queueTiles):
         currentTile = queueTiles.popleft()
         RTGRAnalysisTile(currentTile[0],currentTile[1])
-
+"""
 
 def RTGRAnalysis_SingleSetStep():
-    global set2
+    global set2, set2Remove
     set1 = set2
-    print("RTGR-AL SSS", set1)
+    set1Remove = set2Remove
+    if (len(set1) != 0):
+        print("RTGR-AL SSS", set1)
+    if (len(set1Remove) != 0):
+        print("RTGR-AL-RM SSS", set1Remove)
     set2 = set()
-    for t in set1:
-        RTGRAnalysisTile(t[0],t[1])
+    set2Remove = set()
+    for tile in set1Remove:
+        RTGRAnalysisTileRemove(tile[0],tile[1])
+    for tile in set1:
+        RTGRAnalysisTile(tile[0],tile[1])
 
 def setup():
     global Grid,set1,set2
     size(800,800)
     genGrid()
-    for t in endNodes:
-        set2.add((t[0],t[1]))
-    frameRate(2)
+    for tile in endNodes:
+        set2.add((tile[0],tile[1]))
+    frameRate(30)
 
 
 def draw():
+    global t
     background(255)
     for R in grid:
         for T in R:
@@ -207,10 +306,76 @@ def draw():
     #    for T in R:
     #        if T.type == 0:
     #            arrows(T.x,T.y,sz,sz,T.neighborNum,10)
-    RTGRAnalysis_SingleSetStep()
+    if (not paused):
+        if (t%10 == 0):
+            RTGRAnalysis_SingleSetStep()
+    else:
+        noStroke()
+        fill(255,0,0,75)
+        circle(sz,sz,sz*2)
+    for x,y in set2Remove:
+        colorMode(RGB)
+        stroke(0)
+        strokeWeight(1)
+        fill(255,0,0,50)
+        square(x*sz,y*sz,sz)
+    for x,y in set2:
+        colorMode(RGB)
+        stroke(0)
+        strokeWeight(1)
+        fill(255,255,0,50)
+        square(x*sz,y*sz,sz)
     for R in grid:
         for T in R:
             if T.rtgrStat != 0:
                 arrows(T.x,T.y,sz,sz/4,T.rtgrStat,50)
-    #noLoop()
+    fill(colTypes[setting],75)
+    square(mouseX-5,mouseY-5,sz/2)
+    t += 1
+
+#def mouseMoved():
+
+def mouseReleased():
+    xT = int(map(mouseX,0,width,0,width/sz))
+    yT = int(map(mouseY,0,height,0,height/sz))
+    grid[xT][yT].type = setting
+    grid[xT][yT].rtgrStat = 0
+    if (grid[xT][yT].borderNeighborNum): #if it is on the border
+        for i in range(maxDirs):
+            if (not 1<<i & grid[xT][yT].borderNeighborNum):
+                if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].rtgrStat != 0):
+                    set2.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
+                    set2Remove.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
+                if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum != 4096):
+                    if (setting == 2):
+                        if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
+                            grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum -= tileRotateInt(i,4)
+                    else:
+                        if (not grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
+                            grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum += tileRotateInt(i,4)
+    else:
+        for i in range(maxDirs):
+            if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].rtgrStat != 0):
+                set2.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
+                set2Remove.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
+            if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum != 4096):
+                if (setting == 2):
+                    if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
+                        grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum -= tileRotateInt(i,4)
+                else:
+                    if (not grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
+                        grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum += tileRotateInt(i,4)
+        
+            
+                
     
+def keyReleased():
+    global paused, setting
+    if key == " ":
+        paused = not paused
+    if key == "1":
+        setting = 1
+    if key == "2":
+        setting = 2
+    if key == "0":
+        setting = 0
