@@ -43,7 +43,7 @@ class Tile:
             self.borderNeighborNum += ~self.borderNeighborNum & (32+64+128)
         elif x == width/sz-1:
             self.borderNeighborNum += ~self.borderNeighborNum & (2+4+8)
-        print(x,y,self.borderNeighborNum)
+        #print(x,y,self.borderNeighborNum)
         #"""
         if type == 0:
             #self.rtgrStat += 2+8+32+128
@@ -192,10 +192,10 @@ def rowConnectedRemove(dir,x,y):
     while (not altConnection and (not leftDone or not rightDone)):
         if (grid[right[0]][right[1]].type == 0):
             altConnection = True
-            break
+            return
         if (grid[left[0]][left[1]].type == 0):
             altConnection = True
-            break
+            return
         if (neighborNumRight&(1<<rightNumDir)):
             if (grid[right[0]+dirs8List[rightNumDir][0]][right[1]+dirs8List[rightNumDir][1]].rtgrStat&(1<<dir)):
                 right[0] += dirs8List[rightNumDir][0]
@@ -204,7 +204,7 @@ def rowConnectedRemove(dir,x,y):
                 if (neighborNumRight&(1<<backNumDir)):
                     if (grid[right[0]+dirs8List[backNumDir][0]][right[1]+dirs8List[backNumDir][1]].rtgrStat&(1<<dir)):
                         altConnection = True
-                        break
+                        return
             else:
                 rightDone = True
         else:
@@ -217,7 +217,7 @@ def rowConnectedRemove(dir,x,y):
                 if (neighborNumLeft&(1<<backNumDir)):
                     if (grid[left[0]+dirs8List[backNumDir][0]][left[1]+dirs8List[backNumDir][1]].rtgrStat&(1<<dir)):
                         altConnection = True
-                        break
+                        return
             else:
                 leftDone = True
         else:
@@ -225,22 +225,25 @@ def rowConnectedRemove(dir,x,y):
     
     if (grid[right[0]][right[1]].type == 0):
         altConnection = True
+        return
     if (grid[left[0]][left[1]].type == 0):
         altConnection = True
+        return
     
     if (altConnection == False):
-        print("Alt Connections False",left,right)
+        #print("Alt Connections False",left,right)
         for xT in range(min(left[0],right[0]),max(left[0],right[0])+1):
             for yT in range(min(left[1],right[1]),max(left[1],right[1])+1):
-                print("Test", dir,xT,yT,1<<dir)
+                #print("Test", dir,xT,yT,1<<dir)
                 if (grid[xT][yT].rtgrStat&(1<<dir)):
-                    print("Remove", dir,xT,yT,1<<dir)
+                    #print("Remove", dir,xT,yT,1<<dir)
                     grid[xT][yT].rtgrStat -= 1<<dir
                     if (neighborIntCheck(xT,yT)&(1<<dir)):
                         if(grid[xT+dirs8List[dir][0]][yT+dirs8List[dir][1]].rtgrStat&(1<<dir)):
                             set2Remove.add((xT+dirs8List[dir][0],yT+dirs8List[dir][1]))
     else:
-        print("Alt Connections True",left,right)
+        #print("Alt Connections True",left,right)
+        pass
             
         
 def RTGRAnalysisTileRemove(x,y):#
@@ -251,8 +254,8 @@ def RTGRAnalysisTileRemove(x,y):#
                 if (neighborNum&tileRotateInt(i,4)):
                     if (grid[x+dirs8List[tileRotate(i,4)][0]][y+dirs8List[tileRotate(i,4)][1]].type == 1):
                         if (not grid[x+dirs8List[tileRotate(i,4)][0]][y+dirs8List[tileRotate(i,4)][1]].rtgrStat&(1<<i)):
-                            if (grid[x][y].rtgrStat&(1<<i)):
-                                print("Remove Only Me", i,x,y,1<<i)
+                            if (grid[x][y].rtgrStat&(1<<i) and grid[x][y].type != 0):
+                                #print("Remove Only Me", i,x,y,1<<i)
                                 grid[x][y].rtgrStat -= 1<<i
                                 if (neighborNum&tileRotateInt(i,-2)):
                                     if(grid[x+dirs8List[tileRotate(i,-2)][0]][y+dirs8List[tileRotate(i,-2)][1]].rtgrStat&(1<<i)):
@@ -318,10 +321,12 @@ def RTGRAnalysis_SingleSetStep():
     global set2, set2Remove
     set1 = set2
     set1Remove = set2Remove
+    if (len(set1) != 0 or len(set1Remove) != 0):
+        print
     if (len(set1) != 0):
-        print("RTGR-AL SSS", set1)
+        print"--RTGR-AL SSS", set1
     if (len(set1Remove) != 0):
-        print("RTGR-AL-RM SSS", set1Remove)
+        print"-RTGR-AL-RM SSS", set1Remove
     set2 = set()
     set2Remove = set()
     for tile in set1Remove:
