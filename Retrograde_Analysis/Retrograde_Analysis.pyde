@@ -342,15 +342,17 @@ def RTGRAnalysis_SingleSetStep():
     global set2, set2Remove
     set1 = set2
     set1Remove = set2Remove
+    """
     if (len(set1) != 0 or len(set1Remove) != 0):
-        #print
-        pass
+        print
+        #pass
     if (len(set1) != 0):
-        #print"--RTGR-AL SSS", set1
-        pass
+        print"--RTGR-AL SSS", set1
+        #pass
     if (len(set1Remove) != 0):
-        #print"-RTGR-AL-RM SSS", set1Remove
-        pass
+        print"-RTGR-AL-RM SSS", set1Remove
+        #pass
+    #"""
     set2 = set()
     set2Remove = set()
     for tile in set1Remove:
@@ -410,7 +412,7 @@ lastXT = -1
 lastYT = -1
 
 def mousePressed():
-    print "press"
+    #print "press"
     global lastXT,lastYT
     nxT = int(map(mouseX,0,width,0,width/sz))
     nyT = int(map(mouseY,0,height,0,height/sz))
@@ -419,7 +421,7 @@ def mousePressed():
     mouseTileChange(0)
 
 def mouseDragged():
-    print "drag"
+    #print "drag"
     mouseTileChange(1)
 
 def mouseTileChange(drg):
@@ -478,8 +480,8 @@ def keyReleased():
     global paused, setting, changeSavedNum, savedNumSetting
     #print(keyCode)
     if key == '\n':
-        print("M")
         changeSavedNum = not changeSavedNum
+        print "Enter: ",changeSavedNum
     if (changeSavedNum):
         if key == ' ':
             paused = not paused
