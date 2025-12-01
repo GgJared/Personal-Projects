@@ -5,12 +5,13 @@ import heapq
 """
 #You Can Change Below
 """
-sz = 40
+sz = 20 #size of tiles
 UpPace = 10 #how many frames before new pace
 startDirs = (0,1,2,3,4,5,6,7) #starting node directions numbers 0 to 7
 placedStartDirs = (0,1,2,3,4,5,6,7)
 def randomType():
     return randint(0,4)//4 + 1 #currently has a 1/5 chance of being 2 and 4/5 of being open #0 = start, 1 = open, 2 = wall
+    #return 1
 
 """
 #You Can Change Above
@@ -34,7 +35,6 @@ paused = False
 setting = 1
 changeSavedNum = False;
 t = 0
-
 savedNumSetting = 0
 for dir in placedStartDirs:
     savedNumSetting += 1<<dir
@@ -88,7 +88,7 @@ def genGrid():
         for y in range(width/sz):
             #if x == width/sz/2 and abs(y-height/sz/2) == 0:
             #    tmpGrid.append(Tile(x,y,0))
-            if x == width/sz/2:# and abs(y-height/sz/2)+5 <= 10:#green starts
+            if x == width/sz/2 and abs(y-height/sz/2)+5 <= 10:#green starts
                 tmpGrid.append(Tile(x,y,0))
             else:#tile types
                 tmpGrid.append(Tile(x,y,randomType()))
@@ -343,11 +343,14 @@ def RTGRAnalysis_SingleSetStep():
     set1 = set2
     set1Remove = set2Remove
     if (len(set1) != 0 or len(set1Remove) != 0):
-        print
+        #print
+        pass
     if (len(set1) != 0):
-        print"--RTGR-AL SSS", set1
+        #print"--RTGR-AL SSS", set1
+        pass
     if (len(set1Remove) != 0):
-        print"-RTGR-AL-RM SSS", set1Remove
+        #print"-RTGR-AL-RM SSS", set1Remove
+        pass
     set2 = set()
     set2Remove = set()
     for tile in set1Remove:
@@ -403,46 +406,73 @@ def draw():
     square(mouseX-5,mouseY-5,sz/2)
     t += 1
 
+lastXT = -1
+lastYT = -1
+
 def mousePressed():
-    mouseTileChange()
+    print "press"
+    global lastXT,lastYT
+    nxT = int(map(mouseX,0,width,0,width/sz))
+    nyT = int(map(mouseY,0,height,0,height/sz))
+    lastXT = nxT
+    lastYT = nyT
+    mouseTileChange(0)
 
 def mouseDragged():
-    mouseTileChange()
+    print "drag"
+    mouseTileChange(1)
 
-def mouseTileChange():
-    xT = int(map(mouseX,0,width,0,width/sz))
-    yT = int(map(mouseY,0,height,0,height/sz))
-    grid[xT][yT].type = setting
-    grid[xT][yT].rtgrStat = 0
-    if (grid[xT][yT].borderNeighborNum): #if it is on the border
-        for i in range(maxDirs):
-            if (not 1<<i & grid[xT][yT].borderNeighborNum):
-                if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].rtgrStat != 0):
-                    set2.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
-                    set2Remove.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
-                if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum != 4096):
-                    if (setting == 2):
-                        if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
-                            grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum -= tileRotateInt(i,4)
-                    else:
-                        if (not grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
-                            grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum += tileRotateInt(i,4)
-    else:
-        for i in range(maxDirs):
-            if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].rtgrStat != 0):
-                set2.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
-                set2Remove.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
-            if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum != 4096):
-                if (setting == 2):
-                    if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
-                        grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum -= tileRotateInt(i,4)
-                else:
-                    if (not grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
-                        grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum += tileRotateInt(i,4)
-    if (setting == 0):
-        grid[xT][yT].rtgrStat = savedNumSetting
-        set2.add((xT,yT))
-        return
+def mouseTileChange(drg):
+    global lastXT,lastYT
+    nxT = int(map(mouseX,0,width,0,width/sz))
+    nyT = int(map(mouseY,0,height,0,height/sz))
+    xDif = float(nxT-lastXT)
+    yDif = float(nyT-lastYT)
+    tmpXT = float(lastXT)
+    tmpYT = float(lastYT)
+    tSteps = max(abs(nxT-lastXT),abs(nyT-lastYT))+1 #mult by 2 if want finer lines
+    #print nxT,lastXT,nyT,lastXT,tSteps,xDif,yDif
+    for tz in range(tSteps):
+        xT = int(round(tmpXT))
+        yT = int(round(tmpYT))
+        #print(tmpXT,tmpYT,xT,yT)
+        if(xT < width/sz and xT >= 0 and yT < height/sz and yT >= 0):
+            grid[xT][yT].type = setting
+            grid[xT][yT].rtgrStat = 0
+            if (grid[xT][yT].borderNeighborNum): #if it is on the border
+                for i in range(maxDirs):
+                    if (not 1<<i & grid[xT][yT].borderNeighborNum):
+                        if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].rtgrStat != 0):
+                            set2.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
+                            set2Remove.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
+                        if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum != 4096):
+                            if (setting == 2):
+                                if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
+                                    grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum -= tileRotateInt(i,4)
+                            else:
+                                if (not grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
+                                    grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum += tileRotateInt(i,4)
+            else:
+                for i in range(maxDirs):
+                    if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].rtgrStat != 0):
+                        set2.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
+                        set2Remove.add((xT+dirs8List[i][0],yT+dirs8List[i][1]))
+                    if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum != 4096):
+                        if (setting == 2):
+                            if (grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
+                                grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum -= tileRotateInt(i,4)
+                        else:
+                            if (not grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
+                                grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum += tileRotateInt(i,4)
+            if (setting == 0):
+                grid[xT][yT].rtgrStat = savedNumSetting
+                set2.add((xT,yT))
+        if (tSteps != 0):
+            tmpXT += xDif/tSteps
+            tmpYT += yDif/tSteps
+            #print(xDif/tSteps,yDif/tSteps)
+    lastXT = nxT
+    lastYT = nyT
     
 def keyReleased():
     global paused, setting, changeSavedNum, savedNumSetting
