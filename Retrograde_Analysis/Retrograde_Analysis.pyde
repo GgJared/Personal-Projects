@@ -3,11 +3,20 @@ from random import randint
 import heapq
 
 """
-touch the end tile or be directly on the tile? Probably Touch end tiles
+#You Can Change Below
 """
 sz = 40
-maxDirs = 8 
 UpPace = 10 #how many frames before new pace
+startDirs = (0,1,2,3,4,5,6,7) #starting node directions numbers 0 to 7
+placedStartDirs = (0,1,2,3,4,5,6,7)
+def randomType():
+    return randint(0,4)//4 + 1 #currently has a 1/5 chance of being 2 and 4/5 of being open #0 = start, 1 = open, 2 = wall
+
+"""
+#You Can Change Above
+"""
+
+maxDirs = 8 
 colTypes = (color(50,200,50),color(200,200,200),color(10,10,10)) #RGB
 dirs8List = [
                  (0,-1),
@@ -23,7 +32,15 @@ set1Remove = set()
 set2Remove = set()
 paused = False
 setting = 1
+changeSavedNum = False;
 t = 0
+
+savedNumSetting = 0
+for dir in placedStartDirs:
+    savedNumSetting += 1<<dir
+startDirsInt = 0
+for dir in startDirs:
+    startDirsInt += 1<<dir
 
 class Tile:
     def __init__(self,x,y,type):
@@ -37,23 +54,24 @@ class Tile:
         #"""
         if y == 0: 
             self.borderNeighborNum += (1+2+128)
-        elif y == height/sz-1:
+        if y == height/sz-1:
             self.borderNeighborNum += (8+16+32)
         if x == 0: 
             self.borderNeighborNum += ~self.borderNeighborNum & (32+64+128)
-        elif x == width/sz-1:
+        if x == width/sz-1:
             self.borderNeighborNum += ~self.borderNeighborNum & (2+4+8)
         #print(x,y,self.borderNeighborNum)
         #"""
         if type == 0:
+            self.rtgrStat = startDirsInt
             #self.rtgrStat += 2+8+32+128
-            self.rtgrStat += 1+4+16+64
+            #self.rtgrStat += 1+4+16+64
             endNodes.append((x,y))
     
     def update(self):
         colorMode(RGB)
         stroke(0)
-        strokeWeight(1)
+        strokeWeight(sz/40)
         fill(colTypes[self.type])
         square(self.x*sz,self.y*sz,sz)
         """
@@ -70,25 +88,26 @@ def genGrid():
         for y in range(width/sz):
             #if x == width/sz/2 and abs(y-height/sz/2) == 0:
             #    tmpGrid.append(Tile(x,y,0))
-            if x == width/sz/2 and abs(y-height/sz/2)+5 <= 10:
+            if x == width/sz/2:# and abs(y-height/sz/2)+5 <= 10:#green starts
                 tmpGrid.append(Tile(x,y,0))
-            else:
-                tmpGrid.append(Tile(x,y,randint(0,4)//4 + 1))
+            else:#tile types
+                tmpGrid.append(Tile(x,y,randomType()))
                 #tmpGrid.append(Tile(x,y,1))
         grid.append(tmpGrid)
 
 def arrows(x,y,inSZ,arrowSZ,dirs,ALP): #inefficient, decode is better
     colorMode(HSB,255,255,255,100)
     #ALP = 70
-    strokeWeight(2)
     for i in range(maxDirs):
         #print(i, dirs)
         if ((dirs>>i) &1):
+            strokeWeight(sz/20)
             stroke(i*(255//maxDirs),255,255,ALP)
             fill(i*(255//maxDirs),255,255,ALP)
             line(sz/2+x*inSZ,inSZ/2+y*inSZ,inSZ/2+x*inSZ+arrowSZ*dirs8List[i][0],inSZ/2+y*inSZ+arrowSZ*dirs8List[i][1])
-            stroke(i*(255//maxDirs),255,255,ALP)
-            circle(inSZ/2+x*inSZ+arrowSZ*dirs8List[i][0],inSZ/2+y*inSZ+arrowSZ*dirs8List[i][1],4)
+            strokeWeight(0)
+            #stroke(i*(255//maxDirs),255,255,ALP)
+            circle(inSZ/2+x*inSZ+arrowSZ*dirs8List[i][0],inSZ/2+y*inSZ+arrowSZ*dirs8List[i][1],sz/8)
 
 def neighborIntCheck(x,y):#might be less efficient than just having specific rules for each direction #outputs 255 if all neighbors are empty
     neighborNum = 0
@@ -131,22 +150,24 @@ def RTGRAnalysisTile(x,y):#
                         #...
                 if (not neighborNum & tileRotateInt(i,3)):#sides
                     currTileOffset = tileRotate(i,2)
-                    currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
-                    if (neighborNum & 1<<currTileOffset):
-                        if (not currTile.rtgrStat & tmpNumDir):
-                            #print(i,"ADD-RTGR S")
-                            currTile.rtgrStat += tmpNumDir
-                            set2.add((currTile.x,currTile.y))
-                            #...
+                    if (neighborNum & (1<<currTileOffset)):
+                        currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
+                        if (neighborNum & 1<<currTileOffset):
+                            if (not currTile.rtgrStat & tmpNumDir):
+                                #print(i,"ADD-RTGR S")
+                                currTile.rtgrStat += tmpNumDir
+                                set2.add((currTile.x,currTile.y))
+                                #...
                 if (not neighborNum & tileRotateInt(i,-3)):#sides
                     currTileOffset = tileRotate(i,-2)
-                    currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
-                    if (neighborNum & 1<<currTileOffset):
-                        if (not currTile.rtgrStat & tmpNumDir):
-                            #print(i,"ADD-RTGR S")
-                            currTile.rtgrStat += tmpNumDir
-                            set2.add((currTile.x,currTile.y))
-                            #...
+                    if (neighborNum & (1<<currTileOffset)):
+                        currTile = grid[x+dirs8List[currTileOffset][0]][y+dirs8List[currTileOffset][1]]
+                        if (neighborNum & 1<<currTileOffset):
+                            if (not currTile.rtgrStat & tmpNumDir):
+                                #print(i,"ADD-RTGR S")
+                                currTile.rtgrStat += tmpNumDir
+                                set2.add((currTile.x,currTile.y))
+                                #...
                             
         else:
             if ((grid[x][y].rtgrStat>>(i))&1): 
@@ -365,26 +386,30 @@ def draw():
     for x,y in set2Remove:
         colorMode(RGB)
         stroke(0)
-        strokeWeight(1)
+        strokeWeight(sz/40)
         fill(255,0,0,50)
         square(x*sz,y*sz,sz)
     for x,y in set2:
         colorMode(RGB)
         stroke(0)
-        strokeWeight(1)
+        strokeWeight(sz/40)
         fill(255,255,0,50)
         square(x*sz,y*sz,sz)
     for R in grid:
         for T in R:
             if T.rtgrStat != 0:
-                arrows(T.x,T.y,sz,sz/4,T.rtgrStat,50)
+                arrows(T.x,T.y,sz,sz/4,T.rtgrStat,100)
     fill(colTypes[setting],75)
     square(mouseX-5,mouseY-5,sz/2)
     t += 1
 
-#def mouseMoved():
+def mousePressed():
+    mouseTileChange()
 
-def mouseReleased():
+def mouseDragged():
+    mouseTileChange()
+
+def mouseTileChange():
     xT = int(map(mouseX,0,width,0,width/sz))
     yT = int(map(mouseY,0,height,0,height/sz))
     grid[xT][yT].type = setting
@@ -414,17 +439,32 @@ def mouseReleased():
                 else:
                     if (not grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum & tileRotateInt(i,4)):
                         grid[xT+dirs8List[i][0]][yT+dirs8List[i][1]].neighborNum += tileRotateInt(i,4)
-        
-            
-                
+    if (setting == 0):
+        grid[xT][yT].rtgrStat = savedNumSetting
+        set2.add((xT,yT))
+        return
     
 def keyReleased():
-    global paused, setting
-    if key == " ":
+    global paused, setting, changeSavedNum, savedNumSetting
+    #print(keyCode)
+    if key == '\n':
+        print("M")
+        changeSavedNum = not changeSavedNum
+    if (changeSavedNum):
+        if key == ' ':
+            paused = not paused
+        if (keyCode-48 >= 0 and 57-keyCode >= 0):
+            savedNumSetting *= 10
+            savedNumSetting += keyCode-48
+            print "savedNumSetting =", savedNumSetting
+        if keyCode == 8 or key == 'q':
+            savedNumSetting = savedNumSetting//10
+            print "savedNumSetting =", savedNumSetting
+    if key == ' ':
         paused = not paused
-    if key == "1":
+    if key == '1':
         setting = 1
-    if key == "2":
+    if key == '2':
         setting = 2
-    if key == "0":
+    if key == '0':
         setting = 0
